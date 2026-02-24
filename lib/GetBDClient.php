@@ -212,7 +212,11 @@ final class GetBDClient
         $errno    = curl_errno($ch);
         $error    = curl_error($ch);
         $status   = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
+        file_put_contents(
+            __DIR__ . '/api_raw.log',
+            "URL: $url\nSTATUS: $status\nRESPONSE:\n$response\n\n",
+            FILE_APPEND
+        );
         curl_close($ch);
 
         if ($errno) {

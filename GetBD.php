@@ -106,14 +106,30 @@ class GetBD extends RegistrarModule
             return false;
         }
 
-        $nid = preg_replace('/\D+/', '', $this->docs['nid'] ?? '');
-        if ($nid !== '' && !in_array(strlen($nid), [10, 13, 17], true)) {
-            $this->error = 'Invalid NID Number. Must be 10, 13, or 17 digits.';
-            return false;
+        $nid = '';
+        $require_docs = $this->config["settings"]["doc-fields"][$tld] ?? [];
+
+        if (!empty($require_docs['nid'])) {
+
+
+            $rawDocs = $this->docs ?? [];
+            $rawNid = $rawDocs['nid'] ?? '';
+
+
+            if (is_array($rawNid)) {
+                $rawNid = reset($rawNid);
+            }
+
+            $nid = preg_replace('/\D+/', '', (string) $rawNid);
+
+            if (!in_array(strlen($nid), [10, 13, 17], true)) {
+
+                $allData = json_encode(['docs' => $rawDocs, 'whois' => $whois]);
+                $this->error = "DEBUG DATA - Parsed NID: '{$nid}' | Raw Data: {$allData}";
+                return false;
+            }
         }
 
-        // ns formats 
-        // 3 for .bd domain
         $nameservers = array_slice(array_values($dns), 0, 3);
 
         try {
@@ -185,6 +201,32 @@ class GetBD extends RegistrarModule
             $data = $response['data'];
             $localDomain = $data['localDomain'] ?? [];
             $expiryDate = substr($localDomain['expiryDate'], 0, 10);
+            $fullName = $data['clientFullName'] ?? 'N/A';
+            $email    = $data['clientEmail'] ?? '';
+            $phone    = $data['clientContactNumber'] ?? '';
+            $nid      = $data['clientNid'] ?? '';
+
+            $nameParts = explode(' ', $fullName, 2);
+            $firstName = $nameParts[0];
+            $lastName  = $nameParts[1] ?? '';
+
+            $contact = [
+                'FirstName'         => $firstName,
+                'LastName'          => $lastName,
+                'Name'              => $fullName,
+                'Company'           => $nid ? 'NID: ' . $nid : 'N/A',
+                'EMail'             => $email,
+                'Country'           => 'BD',
+                'City'              => '',
+                'State'             => '',
+                'AddressLine1'      => '',
+                'AddressLine2'      => '',
+                'ZipCode'           => '',
+                'PhoneCountryCode'  => '880',
+                'Phone'             => str_replace('+880', '', $phone),
+                'FaxCountryCode'    => '',
+                'Fax'               => '',
+            ];
 
             return [
                 'creation_time' => substr($localDomain['activationDate'] ?? '', 0, 10),
@@ -193,6 +235,12 @@ class GetBD extends RegistrarModule
                 'ns2'           => $data['secondaryDns'] ?? '',
                 'ns3'           => $data['tertiaryDns'] ?? '',
                 'transferlock'  => true,
+                'whois'         => [
+                    'registrant'     => $contact,
+                    'administrative' => $contact,
+                    'technical'      => $contact,
+                    'billing'        => $contact,
+                ]
             ];
         } catch (\Throwable $e) {
             $this->error = $e->getMessage();
@@ -222,7 +270,7 @@ class GetBD extends RegistrarModule
         }
     }
 
-    // the view order button in admin panel
+    // Create the View Order button in the Admin Panel
     public function custom_admin_buttons()
     {
         return [
@@ -248,7 +296,6 @@ class GetBD extends RegistrarModule
 
             $isSandbox = !empty($this->config["settings"]["sandbox_mode"]);
             $baseUrl = $isSandbox ? 'https://sandbox.get.bd' : 'https://partner.get.bd';
-
 
             Utility::redirect($baseUrl . '/orders/' . $localDomain['orderId']);
         } catch (\Throwable $e) {

@@ -1,4 +1,5 @@
-<?php 
+<?php
+
 return [
     'meta'     => [
         'name'    => 'Get BD',
@@ -9,6 +10,14 @@ return [
         'api_key'          => 'bn_live_8vgtr8iiurysfr5tqpn7sh5ih59ljxbh',
         'sandbox_mode'     => false,
         'doc-fields'       => [
+            'bd' => [
+                'nid' => [
+                    'name'        => 'National ID (NID)',
+                    'description' => 'Please enter your 10, 13, or 17 digit NID Number.',
+                    'type'        => 'text',
+                    'required'    => true,
+                ],
+            ],
             'com.bd' => [
                 'nid' => [
                     'name'        => 'National ID (NID)',
