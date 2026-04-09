@@ -1,14 +1,11 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+
 require_once __DIR__ . '/lib/GetBDClient.php';
 
 use GetBD\GetBDClient;
 
 class GetBD extends RegistrarModule
 {
-
     public $config = [];
     public $error  = null;
 
@@ -95,7 +92,6 @@ class GetBD extends RegistrarModule
             $whois['registrant']['Country'] ?? '',
         ])));
 
-        // Normalize to +880XXXXXXXXXX
         $contactRaw = ($whois['registrant']['PhoneCountryCode'] ?? '') . ($whois['registrant']['Phone'] ?? '');
         $digits = preg_replace('/\D+/', '', $contactRaw);
         if (str_starts_with($digits, '880')) $digits = substr($digits, 3);
@@ -110,7 +106,7 @@ class GetBD extends RegistrarModule
         $require_docs = $this->config["settings"]["doc-fields"][$tld] ?? [];
         $rawDocs      = $this->docs ?? [];
         $nid          = '';
-        $documents    = []; // ['API_TYPE' => '/absolute/path/to/file']
+        $documents    = [];
 
         foreach ($require_docs as $fieldKey => $fieldCfg) {
             $apiType  = $fieldCfg['api_type'] ?? null;
@@ -123,7 +119,7 @@ class GetBD extends RegistrarModule
                     $parsed = preg_replace('/\D+/', '', (string) $rawValue);
                     if (!in_array(strlen($parsed), [10, 13, 17], true)) {
                         if ($required) {
-                            $this->error = "Invalid NID number. Must be 10, 13, or 17 digits. Got: '{$parsed}'";
+                            $this->error = "Invalid NID number. Must be 10, 13, or 17 digits.";
                             return false;
                         }
                     } else {
@@ -142,10 +138,8 @@ class GetBD extends RegistrarModule
                     continue;
                 }
 
-                // Resolve relative WISECP path to absolute
                 $absolutePath = rtrim($_SERVER['DOCUMENT_ROOT'] ?? getcwd(), '/') . '/' . ltrim($rawValue, '/');
                 if (!file_exists($absolutePath)) {
-                    // Fallback: try path as-is
                     if (file_exists($rawValue)) {
                         $absolutePath = $rawValue;
                     } else {
@@ -305,7 +299,6 @@ class GetBD extends RegistrarModule
         }
     }
 
-    // Create the View Order button in the Admin Panel
     public function custom_admin_buttons()
     {
         return [
