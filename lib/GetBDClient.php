@@ -38,14 +38,26 @@ final class GetBDClient
 
     public function registerDomain(
         string $domainName,
-        int $regPeriod,
+        int    $regPeriod,
         string $fullName,
         string $nid,
         string $email,
         string $contactAddress,
         string $contactNumber,
-        array  $nameservers
+        array  $nameservers,
+        array  $documents = []
     ): array {
+
+        $log  = "=== registerDomain() START ===\n";
+        $log .= "[" . date('Y-m-d H:i:s') . "] Domain: {$domainName} | Years: {$regPeriod} | NID: {$nid}\n";
+        $log .= "Documents to upload (" . count($documents) . "):\n";
+        foreach ($documents as $apiType => $path) {
+            $log .= "  [{$apiType}] {$path} | exists=" . (file_exists($path) ? 'YES' : 'NO') . "\n";
+        }
+        file_put_contents(__DIR__ . '/api_raw.log', $log, FILE_APPEND);
+
+        // ── Step 1: Create the order ──────────────────────────────────────────────
+        file_put_contents(__DIR__ . '/api_raw.log', "--- Step 1: Creating order...\n", FILE_APPEND);
 
         $orderResponse = $this->createOrder([
             'domainName'     => $domainName,
@@ -55,31 +67,74 @@ final class GetBDClient
             'email'          => $email,
             'contactAddress' => $contactAddress,
             'contactNumber'  => $contactNumber,
-            'nameServers'    => $nameservers
+            'nameServers'    => $nameservers,
         ]);
 
-        if (
-            empty($orderResponse['success']) ||
-            empty($orderResponse['data']['id'])
-        ) {
-            throw new RuntimeException($orderResponse['message'] ?? 'Order creation failed');
+        if (empty($orderResponse['success']) || empty($orderResponse['data']['id'])) {
+            $msg = $orderResponse['message'] ?? 'Order creation failed';
+            file_put_contents(__DIR__ . '/api_raw.log', "Order creation FAILED: {$msg}\n\n", FILE_APPEND);
+            throw new RuntimeException($msg);
         }
 
         $orderId = (string) $orderResponse['data']['id'];
+        file_put_contents(__DIR__ . '/api_raw.log', "Order created successfully. ID: {$orderId}\n\n", FILE_APPEND);
+
+        // ── Step 2: Upload each document ─────────────────────────────────────────
+        if (!empty($documents)) {
+            file_put_contents(__DIR__ . '/api_raw.log', "--- Step 2: Uploading " . count($documents) . " document(s)...\n", FILE_APPEND);
+
+            foreach ($documents as $apiType => $filePath) {
+                if (!file_exists($filePath)) {
+                    throw new RuntimeException("File not found for document type [{$apiType}]: {$filePath}");
+                }
+
+                file_put_contents(__DIR__ . '/api_raw.log', "Uploading [{$apiType}] from: {$filePath}\n", FILE_APPEND);
+
+                $uploadResp = $this->uploadDocument([
+                    'orderId'      => $orderId,
+                    'documentType' => $apiType,
+                    'file'         => new \CURLFile(
+                        $filePath,
+                        mime_content_type($filePath) ?: 'application/octet-stream',
+                        basename($filePath)
+                    ),
+                ]);
+
+                if (empty($uploadResp['success']) || empty($uploadResp['data']['id'])) {
+                    $msg = $uploadResp['message'] ?? json_encode($uploadResp);
+                    file_put_contents(__DIR__ . '/api_raw.log', "Upload FAILED [{$apiType}]: {$msg}\n\n", FILE_APPEND);
+                    throw new RuntimeException("Failed to upload [{$apiType}]: {$msg}");
+                }
+
+                file_put_contents(__DIR__ . '/api_raw.log', "Upload SUCCESS [{$apiType}] — Document ID: {$uploadResp['data']['id']}\n\n", FILE_APPEND);
+            }
+        } else {
+            file_put_contents(__DIR__ . '/api_raw.log', "--- Step 2: No documents to upload, skipping.\n\n", FILE_APPEND);
+        }
+
+        // ── Step 3: Process the order ─────────────────────────────────────────────
+        file_put_contents(__DIR__ . '/api_raw.log', "--- Step 3: Processing order {$orderId}...\n", FILE_APPEND);
 
         $processResponse = $this->processOrder($orderId);
 
-        if (!($processResponse['success'] ?? false)) {
-            $message = $processResponse['message'] ?? null;
+        file_put_contents(__DIR__ . '/api_raw.log', "Process response: " . json_encode($processResponse) . "\n", FILE_APPEND);
 
-            if ($message !== 'Order must have at least 2 APPROVED documents before processing. Currently 0 approved. Please review and approve documents first.') {
-                throw new RuntimeException($message ?? 'Order processing failed');
+        if (!($processResponse['success'] ?? false)) {
+            $message = $processResponse['message'] ?? 'Order processing failed';
+
+            if (stripos($message, 'APPROVED documents') !== false) {
+                file_put_contents(__DIR__ . '/api_raw.log', "Order requires document approval — admin will review. Continuing.\n\n", FILE_APPEND);
+            } else {
+                file_put_contents(__DIR__ . '/api_raw.log', "Order processing FAILED: {$message}\n\n", FILE_APPEND);
+                throw new RuntimeException($message);
             }
+        } else {
+            file_put_contents(__DIR__ . '/api_raw.log', "Order processed successfully.\n", FILE_APPEND);
         }
 
-        return [
-            "success" => true
-        ];
+        file_put_contents(__DIR__ . '/api_raw.log', "=== registerDomain() COMPLETE ===\n\n", FILE_APPEND);
+
+        return ['success' => true];
     }
 
     public function renewDomain(string $domain, int $years): array
@@ -185,9 +240,12 @@ final class GetBDClient
         ];
 
         $body = null;
+        $logPayload = "NONE";
+
         if (isset($options['json'])) {
             $body = json_encode($options['json'], JSON_THROW_ON_ERROR);
             $headers[] = 'Content-Type: application/json';
+            $logPayload = "JSON: " . $body;
         }
 
         if (isset($options['query'])) {
@@ -206,15 +264,27 @@ final class GetBDClient
 
         if (isset($options['multipart'])) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, $options['multipart']);
+
+            // Format multipart logging so we can see what's attached without crashing print_r on CURLFile
+            $mpKeys = [];
+            foreach ($options['multipart'] as $key => $val) {
+                if ($val instanceof \CURLFile) {
+                    $mpKeys[] = "$key => [CURLFile: " . $val->name . "]";
+                } else {
+                    $mpKeys[] = "$key => $val";
+                }
+            }
+            $logPayload = "MULTIPART DATA:\n" . implode("\n", $mpKeys);
         }
 
         $response = curl_exec($ch);
         $errno    = curl_errno($ch);
         $error    = curl_error($ch);
         $status   = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
         file_put_contents(
             __DIR__ . '/api_raw.log',
-            "URL: $url\nSTATUS: $status\nRESPONSE:\n$response\n\n",
+            "URL: $url\nMETHOD: $method\nPAYLOAD:\n$logPayload\nSTATUS: $status\nRESPONSE:\n$response\n\n",
             FILE_APPEND
         );
         curl_close($ch);

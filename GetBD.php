@@ -81,10 +81,10 @@ class GetBD extends RegistrarModule
 
     public function register($domain = '', $sld = '', $tld = '', $year = 1, $dns = [], $whois = [], $wprivacy = false, $eppCode = '')
     {
-        $domainName = $sld . '.' . $tld;
+        $domainName = idn_to_ascii($sld . '.' . $tld, 0, INTL_IDNA_VARIANT_UTS46);
 
-        $fullName = $whois['registrant']['Name'] ?? '';
-        $email    = $whois['registrant']['EMail'] ?? '';
+        $fullName = trim($whois['registrant']['Name'] ?? '');
+        $email    = trim($whois['registrant']['EMail'] ?? '');
 
         $address = trim(implode(', ', array_filter([
             $whois['registrant']['AddressLine1'] ?? '',
@@ -92,53 +92,88 @@ class GetBD extends RegistrarModule
             $whois['registrant']['City'] ?? '',
             $whois['registrant']['State'] ?? '',
             $whois['registrant']['ZipCode'] ?? '',
-            $whois['registrant']['Country'] ?? ''
+            $whois['registrant']['Country'] ?? '',
         ])));
 
+        // Normalize to +880XXXXXXXXXX
         $contactRaw = ($whois['registrant']['PhoneCountryCode'] ?? '') . ($whois['registrant']['Phone'] ?? '');
         $digits = preg_replace('/\D+/', '', $contactRaw);
-        if (strpos($digits, '880') === 0) $digits = substr($digits, 3);
-        if (strpos($digits, '0') === 0)   $digits = substr($digits, 1);
-
+        if (str_starts_with($digits, '880')) $digits = substr($digits, 3);
+        if (str_starts_with($digits, '0'))   $digits = substr($digits, 1);
         $contact = '+880' . substr($digits, 0, 10);
+
         if (strlen($contact) < 14) {
             $this->error = 'Invalid Bangladeshi contact number.';
             return false;
         }
 
-        $nid = '';
         $require_docs = $this->config["settings"]["doc-fields"][$tld] ?? [];
+        $rawDocs      = $this->docs ?? [];
+        $nid          = '';
+        $documents    = []; // ['API_TYPE' => '/absolute/path/to/file']
 
-        if (!empty($require_docs['nid'])) {
+        foreach ($require_docs as $fieldKey => $fieldCfg) {
+            $apiType  = $fieldCfg['api_type'] ?? null;
+            $docType  = $fieldCfg['type'] ?? 'text';
+            $required = $fieldCfg['required'] ?? false;
+            $rawValue = $rawDocs[$fieldKey] ?? null;
 
-
-            $rawDocs = $this->docs ?? [];
-            $rawNid = $rawDocs['nid'] ?? '';
-
-
-            if (is_array($rawNid)) {
-                $rawNid = reset($rawNid);
+            if ($docType === 'text') {
+                if ($fieldKey === 'nid') {
+                    $parsed = preg_replace('/\D+/', '', (string) $rawValue);
+                    if (!in_array(strlen($parsed), [10, 13, 17], true)) {
+                        if ($required) {
+                            $this->error = "Invalid NID number. Must be 10, 13, or 17 digits. Got: '{$parsed}'";
+                            return false;
+                        }
+                    } else {
+                        $nid = $parsed;
+                    }
+                }
+                continue;
             }
 
-            $nid = preg_replace('/\D+/', '', (string) $rawNid);
+            if ($docType === 'file') {
+                if (empty($rawValue)) {
+                    if ($required) {
+                        $this->error = "Required document '{$fieldCfg['name']}' was not uploaded.";
+                        return false;
+                    }
+                    continue;
+                }
 
-            if (!in_array(strlen($nid), [10, 13, 17], true)) {
+                // Resolve relative WISECP path to absolute
+                $absolutePath = rtrim($_SERVER['DOCUMENT_ROOT'] ?? getcwd(), '/') . '/' . ltrim($rawValue, '/');
+                if (!file_exists($absolutePath)) {
+                    // Fallback: try path as-is
+                    if (file_exists($rawValue)) {
+                        $absolutePath = $rawValue;
+                    } else {
+                        $this->error = "Uploaded file not found for '{$fieldCfg['name']}': {$rawValue}";
+                        return false;
+                    }
+                }
 
-                $allData = json_encode(['docs' => $rawDocs, 'whois' => $whois]);
-                $this->error = "DEBUG DATA - Parsed NID: '{$nid}' | Raw Data: {$allData}";
-                return false;
+                if (!empty($apiType)) {
+                    $documents[$apiType] = $absolutePath;
+                }
             }
         }
 
         $nameservers = array_slice(array_values($dns), 0, 3);
 
         try {
-            $response = $this->getClient()->registerDomain($domainName, $year, $fullName, $nid, $email, $address, $contact, $nameservers);
-
-            if (isset($response['error'])) {
-                $this->error = $response['error'];
-                return false;
-            }
+            $this->getClient()->registerDomain(
+                $domainName,
+                $year,
+                $fullName,
+                $nid,
+                $email,
+                $address,
+                $contact,
+                $nameservers,
+                $documents
+            );
 
             return ['status' => 'SUCCESS'];
         } catch (\Throwable $e) {
