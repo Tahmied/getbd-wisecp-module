@@ -1,107 +1,171 @@
 <?php
+
 return [
     'meta' => [
         'name' => 'Get BD',
-        'version' => '1.0',
+        'version' => '2.1.0',
         'logo' => 'logo.png',
     ],
     'settings' => [
+        // The credential is intentionally left unchanged for this release.
         'api_key' => 'bn_live_ko2brkrcciginzbxobbiebb83rytzjpm',
         'sandbox_mode' => false,
+
+        // Get BD v2 currently applies to order/customer creation. All other
+        // documented legacy operations remain on v1.
+        'v1-base-url' => 'https://api.get.bd/api/v1/external',
+        'v2-base-url' => 'https://api.get.bd/api/v2/external',
+        'sandbox-v1-base-url' => 'https://sandbox-api.get.bd/api/v1/external',
+        'sandbox-v2-base-url' => 'https://sandbox-api.get.bd/api/v2/external',
+        'connect-timeout' => 10,
+        'request-timeout' => 30,
+        // Get BD may apply accepted nameserver changes asynchronously.
+        'nameserver-readback-required' => false,
+
+        // Hosted DNS record CRUD, transfer, EPP, privacy, and WHOIS mutation
+        // are intentionally not advertised because they are absent from the
+        // supplied Get BD external API contract.
+        'whois-types' => false,
+        'dns-record-types' => [],
+
+        'document-max-bytes' => 10485760,
+        'document-extensions' => ['jpg', 'jpeg', 'png', 'pdf'],
+        'document-mime-types' => [
+            'image/jpeg',
+            'image/png',
+            'application/pdf',
+        ],
+        'minimum-documents' => [
+            'bd' => 2,
+            'com.bd' => 2,
+            'net.bd' => 2,
+            'edu.bd' => 2,
+        ],
         'doc-fields' => [
             'bd' => [
-                'nid' => [
-                    'name' => 'National ID (NID)',
-                    'description' => 'Upload a photo/scan of your NID (JPG, PNG, PDF).',
+                'nid_number' => [
+                    'name' => 'National ID Number (NID)',
+                    'description' => 'Enter the registrant’s 10, 13, or 17 digit NID number.',
                     'type' => 'text',
-                    'api_type' => 'NID',
+                    'payload_field' => 'nid',
+                    'required' => true,
+                ],
+                'nid_front' => [
+                    'name' => 'NID Front',
+                    'description' => 'Upload a clear JPG, PNG, or PDF copy of the front of the NID.',
+                    'type' => 'file',
+                    'document_type' => 'NID',
+                    'required' => true,
+                ],
+                'nid_back' => [
+                    'name' => 'NID Back',
+                    'description' => 'Upload a clear JPG, PNG, or PDF copy of the back of the NID.',
+                    'type' => 'file',
+                    'document_type' => 'NID',
                     'required' => true,
                 ],
                 'passport' => [
                     'name' => 'Passport',
-                    'description' => 'Upload a photo/scan of your Passport (JPG, PNG, PDF).',
+                    'description' => 'Optional passport copy.',
                     'type' => 'file',
-                    'api_type' => 'PASSPORT',
+                    'document_type' => 'PASSPORT',
                     'required' => false,
                 ],
                 'trade_license' => [
                     'name' => 'Trade License',
-                    'description' => 'Upload your Trade License document (JPG, PNG, PDF).',
+                    'description' => 'Optional trade license for an organization.',
                     'type' => 'file',
-                    'api_type' => 'TRADE_LICENSE',
+                    'document_type' => 'TRADE_LICENSE',
                     'required' => false,
                 ],
             ],
             'com.bd' => [
                 'nid_number' => [
-                    'name' => 'National ID Number (NID)',
-                    'description' => 'Enter your 10, 13, or 17 digit NID number.',
+                    'name' => 'Authorized Person’s NID Number',
+                    'description' => 'Enter the authorized person’s 10, 13, or 17 digit NID number.',
                     'type' => 'text',
-                    'api_type' => 'nid',          // lowercase = order payload field
-                    'required' => false,
+                    'payload_field' => 'nid',
+                    'required' => true,
                 ],
-                'nid' => [
-                    'name' => 'National ID Document (NID)',
-                    'description' => 'Upload your NID document (JPG, PNG, PDF).',
+                'nid_document' => [
+                    'name' => 'Authorized Person’s NID',
+                    'description' => 'Upload the authorized person’s NID document.',
                     'type' => 'file',
-                    'api_type' => 'NID',          // uppercase = document upload
-                    'required' => false,
+                    'document_type' => 'NID',
+                    'required' => true,
                 ],
                 'trade_license' => [
                     'name' => 'Trade License',
-                    'description' => 'Upload your Trade License document (JPG, PNG, PDF).',
+                    'description' => 'Upload the organization’s current trade license.',
                     'type' => 'file',
-                    'api_type' => 'TRADE_LICENSE',
-                    'required' => false,
+                    'document_type' => 'TRADE_LICENSE',
+                    'required' => true,
                 ],
             ],
             'net.bd' => [
-                'nid' => [
-                    'name' => 'National ID Number (NID)',
-                    'description' => 'Enter your 10, 13, or 17 digit NID number.',
+                'nid_number' => [
+                    'name' => 'Authorized Person’s NID Number',
+                    'description' => 'Enter the authorized person’s 10, 13, or 17 digit NID number.',
                     'type' => 'text',
-                    'api_type' => 'NID',
+                    'payload_field' => 'nid',
+                    'required' => true,
+                ],
+                'nid_document' => [
+                    'name' => 'Authorized Person’s NID',
+                    'description' => 'Upload the authorized person’s NID document.',
+                    'type' => 'file',
+                    'document_type' => 'NID',
                     'required' => true,
                 ],
                 'authorization_letter' => [
                     'name' => 'Authorization Letter',
-                    'description' => 'Upload an Authorization Letter if applicable (JPG, PNG, PDF).',
+                    'description' => 'Upload the applicable authorization or licensing document.',
                     'type' => 'file',
-                    'api_type' => 'OTHER',
-                    'required' => false,
+                    'document_type' => 'OTHER',
+                    'required' => true,
                 ],
                 'other' => [
-                    'name' => 'Other Document',
-                    'description' => 'Upload any other supporting document (JPG, PNG, PDF).',
+                    'name' => 'Additional Supporting Document',
+                    'description' => 'Optional additional supporting document.',
                     'type' => 'file',
-                    'api_type' => 'OTHER',
+                    'document_type' => 'OTHER',
                     'required' => false,
                 ],
             ],
             'edu.bd' => [
-                'nid' => [
-                    'name' => 'National ID Number (NID)',
-                    'description' => 'Enter your 10, 13, or 17 digit NID number.',
+                'nid_number' => [
+                    'name' => 'Authorized Person’s NID Number',
+                    'description' => 'Enter the authorized person’s 10, 13, or 17 digit NID number.',
                     'type' => 'text',
-                    'api_type' => 'NID',
+                    'payload_field' => 'nid',
                     'required' => true,
                 ],
-                'authorization_letter' => [
-                    'name' => 'Institution Documents',
-                    'description' => 'Government approval/registration certificate or affiliation document of the educational institution (JPG, PNG, PDF).',
+                'nid_document' => [
+                    'name' => 'Authorized Person’s NID',
+                    'description' => 'Upload the authorized person’s NID document.',
                     'type' => 'file',
-                    'api_type' => 'OTHER',
+                    'document_type' => 'NID',
+                    'required' => true,
+                ],
+                'institution_document' => [
+                    'name' => 'Institution Approval Document',
+                    'description' => 'Upload the government approval, registration, or affiliation document.',
+                    'type' => 'file',
+                    'document_type' => 'OTHER',
                     'required' => true,
                 ],
                 'other' => [
-                    'name' => 'Other Document',
-                    'description' => 'Upload any other supporting document (JPG, PNG, PDF).',
+                    'name' => 'Additional Supporting Document',
+                    'description' => 'Optional additional supporting document.',
                     'type' => 'file',
-                    'api_type' => 'OTHER',
+                    'document_type' => 'OTHER',
                     'required' => false,
                 ],
             ],
         ],
+
+        'renewal-pending-timeout-hours' => 72,
+        'renewal-reconcile-batch' => 100,
         'whidden-amount' => 0.0,
         'whidden-currency' => '4',
         'adp' => false,
