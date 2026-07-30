@@ -1,88 +1,110 @@
 <?php
 return [
-    'meta'     => [
-        'name'    => 'Get BD',
+    'meta' => [
+        'name' => 'Get BD',
         'version' => '1.0',
-        'logo'    => 'logo.png',
+        'logo' => 'logo.png',
     ],
     'settings' => [
-        'api_key'        => 'bn_live_8vgtr8iiurysfr5tqpn7sh5ih59ljxbh',
-        'sandbox_mode'   => false,
-        'doc-fields'     => [
-            'bd'     => [
-                'nid'                  => [
-                    'name'        => 'National ID (NID)',
+        'api_key' => 'bn_live_ko2brkrcciginzbxobbiebb83rytzjpm',
+        'sandbox_mode' => false,
+        'doc-fields' => [
+            'bd' => [
+                'nid' => [
+                    'name' => 'National ID (NID)',
                     'description' => 'Upload a photo/scan of your NID (JPG, PNG, PDF).',
-                    'type'        => 'text',
-                    'api_type'    => 'NID',
-                    'required'    => true,
+                    'type' => 'text',
+                    'api_type' => 'NID',
+                    'required' => true,
                 ],
-                'passport'             => [
-                    'name'        => 'Passport',
+                'passport' => [
+                    'name' => 'Passport',
                     'description' => 'Upload a photo/scan of your Passport (JPG, PNG, PDF).',
-                    'type'        => 'file',
-                    'api_type'    => 'PASSPORT',
-                    'required'    => false,
+                    'type' => 'file',
+                    'api_type' => 'PASSPORT',
+                    'required' => false,
                 ],
-                'trade_license'        => [
-                    'name'        => 'Trade License',
+                'trade_license' => [
+                    'name' => 'Trade License',
                     'description' => 'Upload your Trade License document (JPG, PNG, PDF).',
-                    'type'        => 'file',
-                    'api_type'    => 'TRADE_LICENSE',
-                    'required'    => false,
+                    'type' => 'file',
+                    'api_type' => 'TRADE_LICENSE',
+                    'required' => false,
                 ],
-
             ],
             'com.bd' => [
-                'nid' => [
-                    'name'        => 'National ID Number (NID)',
+                'nid_number' => [
+                    'name' => 'National ID Number (NID)',
                     'description' => 'Enter your 10, 13, or 17 digit NID number.',
-                    'type'        => 'text',
-                    'api_type'    => 'NID',
-                    'required'    => true,
+                    'type' => 'text',
+                    'api_type' => 'nid',          // lowercase = order payload field
+                    'required' => false,
                 ],
-                'authorization_letter' => [
-                    'name'        => 'Authorization Letter',
-                    'description' => 'Upload an Authorization Letter if applicable (JPG, PNG, PDF).',
-                    'type'        => 'file',
-                    'api_type'    => 'OTHER',
-                    'required'    => false,
+                'nid' => [
+                    'name' => 'National ID Document (NID)',
+                    'description' => 'Upload your NID document (JPG, PNG, PDF).',
+                    'type' => 'file',
+                    'api_type' => 'NID',          // uppercase = document upload
+                    'required' => false,
                 ],
-                'other'                => [
-                    'name'        => 'Other Document',
-                    'description' => 'Upload any other supporting document (JPG, PNG, PDF).',
-                    'type'        => 'file',
-                    'api_type'    => 'OTHER',
-                    'required'    => false,
+                'trade_license' => [
+                    'name' => 'Trade License',
+                    'description' => 'Upload your Trade License document (JPG, PNG, PDF).',
+                    'type' => 'file',
+                    'api_type' => 'TRADE_LICENSE',
+                    'required' => false,
                 ],
             ],
             'net.bd' => [
                 'nid' => [
-                    'name'        => 'National ID Number (NID)',
+                    'name' => 'National ID Number (NID)',
                     'description' => 'Enter your 10, 13, or 17 digit NID number.',
-                    'type'        => 'text',
-                    'api_type'    => 'NID',
-                    'required'    => true,
+                    'type' => 'text',
+                    'api_type' => 'NID',
+                    'required' => true,
                 ],
                 'authorization_letter' => [
-                    'name'        => 'Authorization Letter',
+                    'name' => 'Authorization Letter',
                     'description' => 'Upload an Authorization Letter if applicable (JPG, PNG, PDF).',
-                    'type'        => 'file',
-                    'api_type'    => 'OTHER',
-                    'required'    => false,
+                    'type' => 'file',
+                    'api_type' => 'OTHER',
+                    'required' => false,
                 ],
-                'other'                => [
-                    'name'        => 'Other Document',
+                'other' => [
+                    'name' => 'Other Document',
                     'description' => 'Upload any other supporting document (JPG, PNG, PDF).',
-                    'type'        => 'file',
-                    'api_type'    => 'OTHER',
-                    'required'    => false,
+                    'type' => 'file',
+                    'api_type' => 'OTHER',
+                    'required' => false,
+                ],
+            ],
+            'edu.bd' => [
+                'nid' => [
+                    'name' => 'National ID Number (NID)',
+                    'description' => 'Enter your 10, 13, or 17 digit NID number.',
+                    'type' => 'text',
+                    'api_type' => 'NID',
+                    'required' => true,
+                ],
+                'authorization_letter' => [
+                    'name' => 'Institution Documents',
+                    'description' => 'Government approval/registration certificate or affiliation document of the educational institution (JPG, PNG, PDF).',
+                    'type' => 'file',
+                    'api_type' => 'OTHER',
+                    'required' => true,
+                ],
+                'other' => [
+                    'name' => 'Other Document',
+                    'description' => 'Upload any other supporting document (JPG, PNG, PDF).',
+                    'type' => 'file',
+                    'api_type' => 'OTHER',
+                    'required' => false,
                 ],
             ],
         ],
-        'whidden-amount'   => 0.0,
+        'whidden-amount' => 0.0,
         'whidden-currency' => '4',
-        'adp'              => false,
-        'cost-currency'    => 4,
+        'adp' => false,
+        'cost-currency' => 4,
     ],
 ];

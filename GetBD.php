@@ -7,7 +7,7 @@ use GetBD\GetBDClient;
 class GetBD extends RegistrarModule
 {
     public $config = [];
-    public $error  = null;
+    public $error = null;
 
     function __construct()
     {
@@ -18,16 +18,16 @@ class GetBD extends RegistrarModule
     {
         return [
             'api_key' => [
-                'name'        => "API Key",
-                'type'        => "password",
-                'value'       => $data["api_key"] ?? '',
+                'name' => "API Key",
+                'type' => "password",
+                'value' => $data["api_key"] ?? '',
                 'placeholder' => "Enter your Get BD API Key",
             ],
             'sandbox_mode' => [
-                'name'        => "Sandbox Mode",
-                'type'        => "approval",
+                'name' => "Sandbox Mode",
+                'type' => "approval",
                 'description' => "Enable Sandbox Mode",
-                'checked'     => $data["sandbox_mode"] ?? false,
+                'checked' => $data["sandbox_mode"] ?? false,
             ],
         ];
     }
@@ -35,7 +35,7 @@ class GetBD extends RegistrarModule
     private function getClient()
     {
         return new GetBDClient([
-            'APIKey'      => $this->config["settings"]["api_key"] ?? '',
+            'APIKey' => $this->config["settings"]["api_key"] ?? '',
             'SandboxMode' => !empty($this->config["settings"]["sandbox_mode"]) ? 'on' : 'off'
         ]);
     }
@@ -55,7 +55,8 @@ class GetBD extends RegistrarModule
     public function questioning($sld = NULL, $tlds = [])
     {
         $sld = idn_to_ascii($sld, 0, INTL_IDNA_VARIANT_UTS46);
-        if (!is_array($tlds)) $tlds = [$tlds];
+        if (!is_array($tlds))
+            $tlds = [$tlds];
 
         $result = [];
         $client = $this->getClient();
@@ -81,7 +82,7 @@ class GetBD extends RegistrarModule
         $domainName = idn_to_ascii($sld . '.' . $tld, 0, INTL_IDNA_VARIANT_UTS46);
 
         $fullName = trim($whois['registrant']['Name'] ?? '');
-        $email    = trim($whois['registrant']['EMail'] ?? '');
+        $email = trim($whois['registrant']['EMail'] ?? '');
 
         $address = trim(implode(', ', array_filter([
             $whois['registrant']['AddressLine1'] ?? '',
@@ -94,8 +95,10 @@ class GetBD extends RegistrarModule
 
         $contactRaw = ($whois['registrant']['PhoneCountryCode'] ?? '') . ($whois['registrant']['Phone'] ?? '');
         $digits = preg_replace('/\D+/', '', $contactRaw);
-        if (str_starts_with($digits, '880')) $digits = substr($digits, 3);
-        if (str_starts_with($digits, '0'))   $digits = substr($digits, 1);
+        if (str_starts_with($digits, '880'))
+            $digits = substr($digits, 3);
+        if (str_starts_with($digits, '0'))
+            $digits = substr($digits, 1);
         $contact = '+880' . substr($digits, 0, 10);
 
         if (strlen($contact) < 14) {
@@ -104,18 +107,19 @@ class GetBD extends RegistrarModule
         }
 
         $require_docs = $this->config["settings"]["doc-fields"][$tld] ?? [];
-        $rawDocs      = $this->docs ?? [];
-        $nid          = '';
-        $documents    = [];
+        $rawDocs = $this->docs ?? [];
+        $nid = '';
+        $documents = [];
 
         foreach ($require_docs as $fieldKey => $fieldCfg) {
-            $apiType  = $fieldCfg['api_type'] ?? null;
-            $docType  = $fieldCfg['type'] ?? 'text';
+            $apiType = $fieldCfg['api_type'] ?? null;
+            $docType = $fieldCfg['type'] ?? 'text';
             $required = $fieldCfg['required'] ?? false;
             $rawValue = $rawDocs[$fieldKey] ?? null;
 
             if ($docType === 'text') {
-                if ($fieldKey === 'nid') {
+                // Detect NID number field by api_type (case-insensitive) instead of key name
+                if (strtolower((string) $apiType) === 'nid') {
                     $parsed = preg_replace('/\D+/', '', (string) $rawValue);
                     if (!in_array(strlen($parsed), [10, 13, 17], true)) {
                         if ($required) {
@@ -231,44 +235,44 @@ class GetBD extends RegistrarModule
             $localDomain = $data['localDomain'] ?? [];
             $expiryDate = substr($localDomain['expiryDate'], 0, 10);
             $fullName = $data['clientFullName'] ?? 'N/A';
-            $email    = $data['clientEmail'] ?? '';
-            $phone    = $data['clientContactNumber'] ?? '';
-            $nid      = $data['clientNid'] ?? '';
+            $email = $data['clientEmail'] ?? '';
+            $phone = $data['clientContactNumber'] ?? '';
+            $nid = $data['clientNid'] ?? '';
 
             $nameParts = explode(' ', $fullName, 2);
             $firstName = $nameParts[0];
-            $lastName  = $nameParts[1] ?? '';
+            $lastName = $nameParts[1] ?? '';
 
             $contact = [
-                'FirstName'         => $firstName,
-                'LastName'          => $lastName,
-                'Name'              => $fullName,
-                'Company'           => $nid ? 'NID: ' . $nid : 'N/A',
-                'EMail'             => $email,
-                'Country'           => 'BD',
-                'City'              => '',
-                'State'             => '',
-                'AddressLine1'      => '',
-                'AddressLine2'      => '',
-                'ZipCode'           => '',
-                'PhoneCountryCode'  => '880',
-                'Phone'             => str_replace('+880', '', $phone),
-                'FaxCountryCode'    => '',
-                'Fax'               => '',
+                'FirstName' => $firstName,
+                'LastName' => $lastName,
+                'Name' => $fullName,
+                'Company' => $nid ? 'NID: ' . $nid : 'N/A',
+                'EMail' => $email,
+                'Country' => 'BD',
+                'City' => '',
+                'State' => '',
+                'AddressLine1' => '',
+                'AddressLine2' => '',
+                'ZipCode' => '',
+                'PhoneCountryCode' => '880',
+                'Phone' => str_replace('+880', '', $phone),
+                'FaxCountryCode' => '',
+                'Fax' => '',
             ];
 
             return [
                 'creation_time' => substr($localDomain['activationDate'] ?? '', 0, 10),
-                'end_time'      => $expiryDate,
-                'ns1'           => $data['primaryDns'] ?? '',
-                'ns2'           => $data['secondaryDns'] ?? '',
-                'ns3'           => $data['tertiaryDns'] ?? '',
-                'transferlock'  => true,
-                'whois'         => [
-                    'registrant'     => $contact,
+                'end_time' => $expiryDate,
+                'ns1' => $data['primaryDns'] ?? '',
+                'ns2' => $data['secondaryDns'] ?? '',
+                'ns3' => $data['tertiaryDns'] ?? '',
+                'transferlock' => true,
+                'whois' => [
+                    'registrant' => $contact,
                     'administrative' => $contact,
-                    'technical'      => $contact,
-                    'billing'        => $contact,
+                    'technical' => $contact,
+                    'billing' => $contact,
                 ]
             ];
         } catch (\Throwable $e) {
@@ -291,8 +295,8 @@ class GetBD extends RegistrarModule
 
             return [
                 'creationtime' => substr($localDomain['activationDate'] ?? '', 0, 10),
-                'endtime'      => substr($localDomain['expiryDate'] ?? '', 0, 10),
-                'status'       => !empty($localDomain['isActive']) ? 'active' : 'expired',
+                'endtime' => substr($localDomain['expiryDate'] ?? '', 0, 10),
+                'status' => !empty($localDomain['isActive']) ? 'active' : 'expired',
             ];
         } catch (\Throwable $e) {
             return false;
